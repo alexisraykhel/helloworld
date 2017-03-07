@@ -61,8 +61,8 @@ def read_json(train_filename="../data/train.json", test_filename="../data/test.j
     # adding all these new features to use list #
     features_to_use.extend(["num_photos", "num_features", "created_year", "created_month", "created_day", "listing_id", "created_hour"])
 
-    X_train = train_df[features_to_use]
-    X_test = test_df[features_to_use]
+    X_train = train_df[features_to_use].as_matrix()
+    X_test = test_df[features_to_use].as_matrix()
 
 
     categorical = ["display_address", "manager_id", "building_id", "street_address"]
