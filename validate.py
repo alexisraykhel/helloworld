@@ -1,5 +1,6 @@
 if __name__ == "__main__":
     import os
+    import hashlib
     import atexit
     import warnings
     import pandas as pd
@@ -55,7 +56,7 @@ if __name__ == "__main__":
     import sklearn.multiclass as multi
     import sklearn.cross_decomposition as cd
 
-    import xgboost as xgb
+
 
 
 
@@ -67,7 +68,7 @@ if __name__ == "__main__":
 
     from itertools import combinations
 
-    from utils import cpredict, Helper, MultiPredictor, DumbAverage, vert, upsample, stretch, pshuffle, correlations, pconcat, Consumer, mp_readfile, cclone, groupby_avg, cv, score, CorrClusterer, Smoother, scale, unique_rows, print_predictions, get_xgb_imp,  read_json
+    from utils import cpredict, Helper, MultiPredictor, DumbAverage, vert, upsample, stretch, pshuffle, correlations, pconcat, Consumer, mp_readfile, cclone, groupby_avg, cv, score, CorrClusterer, Smoother, scale, unique_rows, print_predictions, read_json
     import scipy.linalg as lin
     import scipy.linalg.interpolative as interpolative
 
@@ -80,21 +81,29 @@ def total_time(start):
     print "Time it took:"+str(round(time.time()-start))
 
 
-def check_nlp_improvement():
-    clf = xgb.XGBClassifier(objective='multi:softprob', max_depth=6, n_estimators=360)
+def check_nlp_improvement(fast=False):
+    if fast:
+        clf = RF(n_estimators=100, n_jobs=-1,criterion="entropy",max_features='auto',min_samples_split=5)
+        folds = 5
+    else:
+        clf = RF(n_estimators=1000, n_jobs=-1, criterion="entropy", max_features=100, min_samples_split=5)
+        folds = 10
 
+
+    parlist = str(np.sort(clf.get_params().values()+[str(folds)]))
+    sig = abs(hash(parlist))
     try:
-        baseline = np.load("nlp_baseline.npy")[0]
+        baseline = np.load("../storage/nlp_baseline_"+str(sig)+".npy")
     except Exception:
-        print("Establishing baseline, this will run once and will take several minutes")
+        print("Establishing baseline, this will run once")
         X_train, y_train, X_test, test_ids = read_json(do_descriptions=False)
-        baseline = cv(X_train, y_train, None, MinMaxScaler(), clf, folds=5, metric=metrics.log_loss, verbose=True)
-        np.save("nlp_baseline",baseline)
+        baseline = cv(X_train, y_train, None, MinMaxScaler(), clf, folds=folds, metric=metrics.log_loss, verbose=True)
+        np.save("../storage/nlp_baseline_"+str(sig),baseline)
 
     print("Baseline:",baseline)
 
     X_train, y_train, X_test, test_ids = read_json(do_descriptions=True)
-    print ("Checking performance, this will take several minutes")
+    print ("Checking performance, this may take several minutes")
     res = cv(X_train, y_train, None, MinMaxScaler(), clf, folds=5, metric=metrics.log_loss, verbose=True)
     print("Result:",res)
 
@@ -114,4 +123,4 @@ if __name__ == '__main__':
     if rs is not None:
         np.random.seed(rs)
 
-    check_nlp_improvement()
+    check_nlp_improvement(fast=True)

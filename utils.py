@@ -669,12 +669,6 @@ def score(X_train,y_train,rank_train, X_test,y_test,rank_test,classifier, metric
         rv += [clf]
     return rv
 
-def get_xgb_imp(xgb, feat_names):
-    from numpy import array
-    imp_vals = xgb.booster().get_fscore()
-    imp_dict = {feat_names[i]:float(imp_vals.get('f'+str(i),0.)) for i in range(len(feat_names))}
-    total = array(imp_dict.values()).sum()
-    return {k:v/total for k,v in imp_dict.items()}
 
 
 def cv(X, y, rank, transformer, classifier, vector=None, folds=10, random_state=None, metric=metrics.roc_auc_score, verbose=False, force_binary = False,upsample_params=None, sample_weight=None, return_blend=False, return_classifiers = False):
