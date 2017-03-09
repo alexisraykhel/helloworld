@@ -7,6 +7,7 @@ if __name__ == "__main__":
     import numpy as np
     import random
     import copy
+    import hashlib
     import os.path
 
     from sklearn.base import clone
@@ -78,7 +79,7 @@ if __name__ == "__main__":
 
 
 def total_time(start):
-    print "Time it took:"+str(round(time.time()-start))
+    print("Time it took:"+str(round(time.time()-start)))
 
 
 def check_nlp_improvement(fast=False):
@@ -89,22 +90,24 @@ def check_nlp_improvement(fast=False):
         clf = RF(n_estimators=1000, n_jobs=-1, criterion="entropy", max_features=100, min_samples_split=5)
         folds = 10
 
-
-    parlist = str(np.sort(clf.get_params().values()+[str(folds)]))
-    sig = abs(hash(parlist))
+    paramlist = [str(i) for i in clf.get_params().values()]
+    parlist = str(np.sort(paramlist))+str(folds)
+    h = hashlib.sha1()
+    h.update(parlist.encode('utf-8'))
+    sig = h.hexdigest()
     try:
-        baseline = np.load("../storage/nlp_baseline_"+str(sig)+".npy")
+        baseline = np.load("nlp_baseline_"+str(sig)+".npy")
     except Exception:
         print("Establishing baseline, this will run once")
         X_train, y_train, X_test, test_ids = read_json(do_descriptions=False)
         baseline = cv(X_train, y_train, None, MinMaxScaler(), clf, folds=folds, metric=metrics.log_loss, verbose=True)
-        np.save("../storage/nlp_baseline_"+str(sig),baseline)
+        np.save("nlp_baseline_"+str(sig),baseline)
 
     print("Baseline:",baseline)
 
     X_train, y_train, X_test, test_ids = read_json(do_descriptions=True)
     print ("Checking performance, this may take several minutes")
-    res = cv(X_train, y_train, None, MinMaxScaler(), clf, folds=5, metric=metrics.log_loss, verbose=True)
+    res = cv(X_train, y_train, None, MinMaxScaler(), clf, folds=folds, metric=metrics.log_loss, verbose=True)
     print("Result:",res)
 
     if res < baseline:

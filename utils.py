@@ -20,7 +20,7 @@ import inspect, re
 from text import NLP
 
 
-def read_json(train_filename="../data/train.json", test_filename="../data/test.json", do_one_hot=False, do_descriptions=False):
+def read_json(train_filename="train.json", test_filename="test.json", do_one_hot=False, do_descriptions=False):
     print ("Loading dataset...")
     train_df = pd.read_json(train_filename)
     test_df = pd.read_json(test_filename)
@@ -29,7 +29,7 @@ def read_json(train_filename="../data/train.json", test_filename="../data/test.j
     print(test_df.shape)
 
     print ("Raw features:")
-    print list(train_df)
+    print(list(train_df))
 
     features_to_use = ["bathrooms", "bedrooms", "latitude", "longitude", "price"]
 
@@ -102,11 +102,13 @@ def read_json(train_filename="../data/train.json", test_filename="../data/test.j
 
     if do_descriptions:
         nlp = NLP(train_df,test_df)
-        train_desc, test_desc = nlp.convert_descriptions()
+        train_desc, test_desc, train_length, test_length = nlp.convert_descriptions()
         assert len(train_desc) == len(X_train), "Length of training dataset is different from the length of provided descriptions list"
         assert len(test_desc) == len(X_test), "Length of test dataset is different from the length of provided descriptions list"
         X_train = np.hstack((X_train,train_desc))
+        X_train = np.hstack((X_train, train_length))
         X_test = np.hstack((X_test, test_desc))
+        X_test = np.hstack((X_test, test_length))
 
 
 
@@ -170,10 +172,10 @@ def read_batch(startend, shared_x, shared_res,shape):
     res = np.frombuffer(shared_res, dtype='float32').reshape(shape)
     for l_idx in range(start, end):
         res[l_idx,:] = np.array(shared_x[l_idx].split(",")).astype('float')
-    print ".",
+    print(".",)
 
 def mp_readfile(input_file, n_jobs=24, batch_size=1000):
-    print "Doing multiprocessing read of "+str(input_file)+", batch_size:"+str(batch_size)
+    print("Doing multiprocessing read of "+str(input_file)+", batch_size:"+str(batch_size))
     x = open(input_file, 'r')
     mgr = mp.Manager()
     shared_x = mgr.list()
@@ -187,7 +189,7 @@ def mp_readfile(input_file, n_jobs=24, batch_size=1000):
     tasks = mp.JoinableQueue()
     batch_count = int(np.floor(len(shared_x) / batch_size)) + 1
     worker_count = min(n_jobs,batch_count)
-    print str(worker_count)+" workers"
+    print(str(worker_count)+" workers")
     num_jobs = 0
     for batch_idx in range(batch_count):
         start = batch_idx * batch_size
@@ -207,7 +209,7 @@ def mp_readfile(input_file, n_jobs=24, batch_size=1000):
     X = np.frombuffer(shared_res, dtype='float32').reshape(len(shared_x), len(first_line))
     del shared_x
     gc.collect()
-    print ""
+    print("")
     return X
 
 class Consumer(mp.Process):
@@ -313,7 +315,7 @@ class Helper(BaseEstimator, ClassifierMixin):
         else:
             res = transformed
         if self.verbose:
-            print "transformed",res.shape,res
+            print("transformed",res.shape,res)
         return res
 
     def get_params(self, deep=True):
@@ -336,7 +338,7 @@ def mp_fit_wrapper(pair, shared_X, shared_y, sample_weight):
     X = np.frombuffer(shared_X, dtype='float32').reshape((len(shared_y),X_feature_count))
     if "transform" in dir(clf): #if can't transform, no need to fit
         clf.fit(X, shared_y, sample_weight=sample_weight)
-    print "<",
+    print("<",)
     return (clf_idx,clf)
 
 def mp_transform_wrapper(pair, shared_X, X_Shape):
@@ -345,7 +347,7 @@ def mp_transform_wrapper(pair, shared_X, X_Shape):
 
     X = np.frombuffer(shared_X, dtype='float32').reshape(X_Shape)
     res = cpredict(clf,X)
-    print ">",
+    print(">",)
     return (clf_idx,res)
 
 class MultiPredictor(BaseEstimator):
@@ -374,9 +376,9 @@ class MultiPredictor(BaseEstimator):
                     cclf.fit(X, y)
                 self.fit_classifiers.append(cclf)
                 if self.verbose:
-                    print "<",
+                    print("<",)
         else:
-            print "n_jobs:"+str(self.n_jobs)
+            print("n_jobs:"+str(self.n_jobs))
             tasks = mp.JoinableQueue()
             results = mp.Queue()
             for clf_idx in range(len(self.classifiers)):
@@ -405,7 +407,7 @@ class MultiPredictor(BaseEstimator):
             for idx in range(len(self.fit_classifiers)):
                 predictions[idx] = cpredict(self.fit_classifiers[idx],X)
                 if self.verbose:
-                    print ">",
+                    print(">",)
         else:
             #rint "n_jobs:" + str(self.n_jobs)
             tasks = mp.JoinableQueue()
@@ -446,21 +448,21 @@ class MultiPredictor(BaseEstimator):
         return self
 
 def unique_rows(a):
-    print ",,,"
+    print(",,,")
     a = np.ascontiguousarray(a)
-    print ",,,,"
+    print(",,,,")
     unique_a = np.unique(a.view([('', a.dtype)]*a.shape[1]))
-    print ",,,,,"
+    print(",,,,,")
     return unique_a.view(a.dtype).reshape((unique_a.shape[0], a.shape[1]))
 
 def remove_stupid_columns(X, verbose = True):
     if verbose:
-        print "Removing stupid columns"
+        print("Removing stupid columns")
     X = X.T
     if verbose:
-        print "T", X.shape, len(X)
+        print("T", X.shape, len(X))
     res = X
-    print ","
+    print(",")
     zerostd_count = 0
     progress_count = 0
     # for row in X:
@@ -477,14 +479,14 @@ def remove_stupid_columns(X, verbose = True):
     # print "pre_unique_len",pre_unique_len
     # res = unique_rows(np.array(res))
     pre_unique_len = len(res)
-    print ",,"
+    print(",,")
     res = unique_rows(res)
-    print ",,,,,,"
+    print(",,,,,,")
     dupes_count = pre_unique_len - len(res)
     if verbose:
-        print ""
-        print "Removed: all the same element columns:"+str(zerostd_count)
-        print "Removed: duplicate columns:"+str(dupes_count)
+        print("")
+        print("Removed: all the same element columns:"+str(zerostd_count))
+        print("Removed: duplicate columns:"+str(dupes_count))
     return np.array(res).T
 
 
@@ -500,7 +502,7 @@ class DumbAverage(BaseEstimator, ClassifierMixin):
         if self.weights is not None and len(self.weights) == X.shape[1]:
             weights = self.weights
         else:
-            print "DumbAverage: using uniform weights"
+            print("DumbAverage: using uniform weights")
             weights = np.ones((X.shape[1],))
         if self.method == 'average':
             res = np.average(X,weights=weights,axis=1)
@@ -551,7 +553,7 @@ def upsample(X, y, rank, mult=0, base=1, noise_std=0.015,verbose=False,features=
     if mult == 0 and base == 1:
         return X,y
 
-    print "^",
+    print("^",)
     start_size = X.shape[0]
     multiplier = np.floor(rank * mult+base).astype('int32')
     nonzeros = multiplier[multiplier > 0].shape[0]
@@ -560,7 +562,7 @@ def upsample(X, y, rank, mult=0, base=1, noise_std=0.015,verbose=False,features=
 
     X = np.repeat(X, multiplier, axis=0)
     if verbose:
-        print "upsampling, start size",start_size-tests,"end size",X.shape[0]-tests,"test size",tests,"nonzeros",nonzeros
+        print("upsampling, start size",start_size-tests,"end size",X.shape[0]-tests,"test size",tests,"nonzeros",nonzeros)
     #C = X
     if y is not None:
         y = np.repeat(y, multiplier)
@@ -674,7 +676,7 @@ def score(X_train,y_train,rank_train, X_test,y_test,rank_test,classifier, metric
 def cv(X, y, rank, transformer, classifier, vector=None, folds=10, random_state=None, metric=metrics.roc_auc_score, verbose=False, force_binary = False,upsample_params=None, sample_weight=None, return_blend=False, return_classifiers = False):
     regression = False
     if len(np.unique(y)) > 100 or metric == metrics.mean_absolute_error:
-        print "Regression task"
+        print("Regression task")
         kf = KFold(len(y), n_folds=folds, shuffle=True, random_state=random_state)
         regression = True
     else:
@@ -725,7 +727,7 @@ def cv(X, y, rank, transformer, classifier, vector=None, folds=10, random_state=
                 auc = score(X_train, y_train, rank_train, X_test, y_test, rank_test, classifier, metric=metric, force_binary=force_binary, upsample_params=upsample_params, sample_weight_training=sw_train, sample_weight_test=sw_test, regression=regression)
         sumauc += auc/folds
         if verbose:
-            print ".",
+            print(".",)
     auc = sumauc
     if return_blend:
         if return_classifiers:
@@ -743,7 +745,7 @@ def correlations(X,y,ind_score_metric=metrics.log_loss,reference=None):
     if reference is None:
         reference = np.full(y.shape,1.)
     else:
-        print "Reference specified in correlations", np.count_nonzero(reference), reference
+        print("Reference specified in correlations", np.count_nonzero(reference), reference)
     X = X[reference == 1]
     y = y[reference == 1]
     cov = np.corrcoef(X,y,rowvar=0)
@@ -752,18 +754,18 @@ def correlations(X,y,ind_score_metric=metrics.log_loss,reference=None):
     np.savetxt("covariances.csv", cov, fmt='%1.4f', delimiter=",")
     covtarg = cov[:-1,-1]
 
-    print "covsum before scaling", covsum
-    print "covtarg before scaling", covtarg
+    print("covsum before scaling", covsum)
+    print("covtarg before scaling", covtarg)
 
     if ind_score_metric is not None:
         score_ar = []
         for c in range(X.shape[1]):
             sc = ind_score_metric(y,X[:,c])
             score_ar.append(round(sc,6))
-    print "individual feature scores", score_ar
-    print "individual best:" +str(np.argmin(score_ar))+": "+str(np.min(score_ar))
-    print "sorted :" + str(np.sort(score_ar))
-    print "indexes:"+str(np.argsort(score_ar))
+    print("individual feature scores", score_ar)
+    print("individual best:" +str(np.argmin(score_ar))+": "+str(np.min(score_ar)))
+    print("sorted :" + str(np.sort(score_ar)))
+    print("indexes:"+str(np.argsort(score_ar)))
 
 
 
@@ -771,7 +773,7 @@ def groupby_avg(filename):
     data = pd.read_csv(filename)
     group = data.groupby(['t_id'], as_index=False)
     averages = group.aggregate(np.mean)
-    print averages
+    print(averages)
     averages.to_csv('../predictions_avg.csv', float_format='%.5f', index=None)
 
 class CorrClusterer(BaseEstimator):
@@ -798,10 +800,10 @@ class CorrClusterer(BaseEstimator):
             if len(cluster) == self.group_size:
                 approved_clusters.append(cluster)
         if len(approved_clusters) * self.group_size != f_cnt:
-            print "Failed to cluster into groups of "+str(self.group_size)+", exiting"
+            print("Failed to cluster into groups of "+str(self.group_size)+", exiting")
             exit(1)
         self.groups = approved_clusters
-        print approved_clusters
+        print(approved_clusters)
         return self
 
     def transform(self,X):
@@ -843,7 +845,7 @@ class Smoother(BaseEstimator):
             suniq = np.sort(uniq)
             diff = np.diff(suniq)
             sdiff = np.sort(diff)
-            print i,np.min(suniq),np.max(suniq),np.average(suniq)," | ",np.min(sdiff),np.max(sdiff),np.average(sdiff),np.median(sdiff)#,np.percentile(sdiff,[10,20,30,40,50,60,70,80,90])
+            print(i,np.min(suniq),np.max(suniq),np.average(suniq)," | ",np.min(sdiff),np.max(sdiff),np.average(sdiff),np.median(sdiff))#,np.percentile(sdiff,[10,20,30,40,50,60,70,80,90]))
         exit(0)
         return self
 
@@ -881,7 +883,7 @@ def fix_predictions(ids, p):
             p_adj.append(0.5)
             missing_count += 1
     if duplicates_count > 0 or missing_count > 0:
-        print "FIXING PREDICTIONS. Duplicates:",duplicates_count," missing:",missing_count
+        print("FIXING PREDICTIONS. Duplicates:",duplicates_count," missing:",missing_count)
     return np.array(ids_adj), np.array(p_adj)
 
 def print_predictions(test_ids, p_test, filename="predictions.csv", additional_sets = None, extra_precision=False, skip_fix=False):
@@ -950,7 +952,7 @@ def predict_on_blend(dataset, predictive_transformer, classifier, folds=5, rando
         print("Performing "+str(folds)+"-fold transformer CV on training set")
         y_blend = np.full((X_train.shape[0],), -1.)
         for fold, (train_index, test_index) in enumerate(kf):
-            print "Fold "+str(fold),
+            print("Fold "+str(fold),)
             X_train_fold, X_test_fold = X_train[train_index], X_train[test_index]
             y_train_fold, y_test_fold = y_train[train_index], y_train[test_index]
 
@@ -965,7 +967,7 @@ def predict_on_blend(dataset, predictive_transformer, classifier, folds=5, rando
 
         if save_l2:
             np.savetxt("l2_train.csv", np.hstack((X_transformed_blend, vert(y_blend))), delimiter=",", fmt='%1.5f')
-            print "\nFitting transformer on the whole train set"
+            print("\nFitting transformer on the whole train set")
             predictive_transformer.fit(X_train, y_train)
             X_test = predictive_transformer.transform(X_test)
             np.savetxt("l2_test.csv", np.hstack((vert(test_ids), X_test)), delimiter=",", fmt='%1.5f')
@@ -973,22 +975,22 @@ def predict_on_blend(dataset, predictive_transformer, classifier, folds=5, rando
         #     X_val = transformer.transform(X_val)
         #     np.savetxt("l2_val.csv", np.hstack((X_val, vert(y_val))), delimiter=",", fmt='%1.5f')
     else:
-        print "Transformer not provided, skipping transformer CV, assuming passed dataset is the blend"
+        print("Transformer not provided, skipping transformer CV, assuming passed dataset is the blend")
         X_transformed_blend = X_train
         y_blend = y_train
 
 
-    print "Train correlations"
+    print("Train correlations")
     correlations(X_transformed_blend,y_blend)
 
 
     if do_classifier_cv_folds is not None:
-        print "Performing "+str(do_classifier_cv_folds)+"-fold classfier CV on the blend"
+        print("Performing "+str(do_classifier_cv_folds)+"-fold classfier CV on the blend")
         res = cv(X_transformed_blend,y_blend,None,None,classifier,folds=do_classifier_cv_folds,metric=metrics.log_loss)
-        print "Classifier CV result: "+str(res)
+        print("Classifier CV result: "+str(res))
 
     if do_predict:
-        print "Fitting classifier on the blend"
+        print("Fitting classifier on the blend")
         clf = cclone(classifier)
         clf.fit(X_transformed_blend, y_blend)
         p_test = cpredict(clf,X_test)
